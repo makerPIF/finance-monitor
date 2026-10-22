@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>금융 동향 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="data/fin_data.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8;--card:#ffffff;--ink:#16202c;--sub:#5d6b7a;--line:#e3e7ec;--accent:#1f5eff;
+  --up:#d6336c;--down:#1971c2;--warn:#e8590c;--ok:#2b8a3e;--chip:#eef2f7;
+  --c1:#1f5eff;--c2:#e8590c;--c3:#2b8a3e;--c4:#ae3ec9;--c5:#d6336c;--c6:#0c8599;--c7:#5c7cfa;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141a;--card:#171e27;--ink:#e6ebf1;--sub:#93a1b1;--line:#27313d;--accent:#5b8cff;--chip:#212a35;
+  --up:#ff6b9a;--down:#4dabf7;--c1:#5b8cff;--c2:#ff922b;--c3:#51cf66;--c4:#da77f2;--c5:#ff6b9a;--c6:#3bc9db;--c7:#91a7ff;}}
+:root[data-theme="dark"]{--bg:#0f141a;--card:#171e27;--ink:#e6ebf1;--sub:#93a1b1;--line:#27313d;--accent:#5b8cff;--chip:#212a35;
+  --up:#ff6b9a;--down:#4dabf7;--c1:#5b8cff;--c2:#ff922b;--c3:#51cf66;--c4:#da77f2;--c5:#ff6b9a;--c6:#3bc9db;--c7:#91a7ff;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:14px;line-height:1.5}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+h1{font-size:22px;margin:0;letter-spacing:-.3px}
+h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+h2 small{font-weight:400;color:var(--sub);font-size:12px}
+.meta{color:var(--sub);font-size:12px}
+.banner{padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:13px}
+.banner.demo{background:#fff4e6;color:#a8410b;border:1px solid #ffd8a8}
+.banner.err{background:#fff5f5;color:#c92a2a;border:1px solid #ffc9c9}
+.banner.none{background:var(--card);border:1px solid var(--line)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .banner.demo{background:#3a2410;color:#ffc078;border-color:#5c3a17}}
+.grid{display:grid;gap:12px}
+.kpis{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.kpi .lbl{color:var(--sub);font-size:12px}
+.kpi .val{font-size:22px;font-weight:700;letter-spacing:-.5px;margin:2px 0}
+.kpi .chg{font-size:12px;font-weight:600}
+.kpi canvas{width:100%!important;height:34px!important;margin-top:6px}
+.up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--sub)}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:16px 0 10px}
+.seg{display:inline-flex;background:var(--chip);border-radius:9px;padding:3px}
+.seg button{border:0;background:transparent;color:var(--sub);padding:5px 11px;border-radius:7px;font:inherit;font-size:13px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.chartbox{position:relative;height:300px}
+.chartbox.sm{height:240px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--sub);font-weight:600;font-size:12px;background:var(--card);position:sticky;top:0}
+.tscroll{overflow:auto;max-height:420px}
+.summary li{margin:4px 0}
+.summary{margin:0;padding-left:18px}
+input[type=search]{width:100%;max-width:280px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.diagram svg{width:100%;height:auto}
+.diagram text{font-family:inherit}
+a{color:var(--accent)}
+.foot{color:var(--sub);font-size:12px;margin-top:20px}
+.themebtn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 10px;cursor:pointer;font:inherit;font-size:12px}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.nav a{font-size:13px;text-decoration:none;padding:5px 10px;border-radius:8px;background:var(--chip);color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>금융 동향 대시보드</h1>
+    <div class="meta" id="meta"></div>
+  </div>
+  <div class="nav">
+    <a href="bank_compare.html">은행 상품 비교 →</a>
+    <button class="themebtn" id="themeBtn">화면 모드</button>
+  </div>
+</header>
+<div id="banners"></div>
+
+<section class="grid kpis" id="kpis"></section>
+
+<div class="toolbar">
+  <span class="meta">조회 기간</span>
+  <div class="seg" id="period">
+    <button data-d="31">1개월</button><button data-d="92">3개월</button><button data-d="183" class="on">6개월</button>
+    <button data-d="366">1년</button><button data-d="1100">3년</button>
+  </div>
+</div>
+
+<section class="card" style="margin-bottom:12px">
+  <h2>금리 추이 <small>기준금리 · 단기 · 장기 · 신용</small></h2>
+  <div class="chartbox"><canvas id="cRates"></canvas></div>
+</section>
+
+<section class="grid two" style="margin-bottom:12px">
+  <div class="card">
+    <h2>금리 스프레드 <small>장단기 금리차(10Y−3Y) · 신용스프레드(회사채−국고3Y)</small></h2>
+    <div class="chartbox sm"><canvas id="cSpread"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>환율 <small id="fxNote">기간 시작=100 지수화</small>
+      <span class="seg" style="margin-left:auto" id="fxMode"><button data-m="idx" class="on">지수</button><button data-m="raw">원값</button></span></h2>
+    <div class="chartbox sm"><canvas id="cFx"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>주가지수 <small>KOSPI(좌) · KOSDAQ(우)</small></h2>
+    <div class="chartbox sm"><canvas id="cStock"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>물가와 실질금리 <small>최근 36개월 · CPI 전년동월비 vs 기준금리</small></h2>
+    <div class="chartbox sm"><canvas id="cCpi"></canvas></div>
+  </div>
+</section>
+
+<section class="grid two" style="margin-bottom:12px">
+  <div class="card">
+    <h2>은행 예대금리 <small>예금은행 신규취급액 가중평균 · 최근 36개월</small></h2>
+    <div class="chartbox sm"><canvas id="cBank"></canvas></div>
+  </div>
+  <div class="card diagram">
+    <h2>금리 전달 경로 <small>최근값 · 1개월 변화</small></h2>
+    <div id="flow"></div>
+  </div>
+</section>
+
+<section class="card" style="margin-bottom:12px">
+  <h2>이번 동향 요약 <small>데이터 기준 자동 생성</small></h2>
+  <ul class="summary" id="summary"></ul>
+</section>
+
+<section class="grid two" style="margin-bottom:12px">
+  <div class="card">
+    <h2>기간별 변화 <small>금리는 %p, 그 외는 %</small></h2>
+    <div class="tscroll"><table id="chgTable"></table></div>
+  </div>
+  <div class="card">
+    <h2>상관관계 <small>선택 기간 일간 변화 기준 상관계수</small></h2>
+    <div class="tscroll"><table id="corrTable"></table></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>한국은행 100대 통계지표 <small id="ksCount"></small></h2>
+  <input type="search" id="ksSearch" placeholder="지표 검색 (예: 환율, 고용, 성장률)">
+  <div class="tscroll" style="margin-top:10px"><table id="ksTable"></table></div>
+</section>
+
+<div class="foot" id="foot"></div>
+</div>
+
+<script>
+(function(){
+const D = window.FIN_DATA;
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ---------- 테마 ---------- */
+$('#themeBtn').onclick = () => {
+  const r = document.documentElement, cur = r.getAttribute('data-theme');
+  const dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.setAttribute('data-theme', dark ? 'light' : 'dark');
+  try{localStorage.setItem('finTheme', r.getAttribute('data-theme'))}catch(e){}
+  renderAll();
+};
+try{const t=localStorage.getItem('finTheme'); if(t) document.documentElement.setAttribute('data-theme',t);}catch(e){}
+
+if(!D){
+  $('#banners').innerHTML = `<div class="banner none"><b>데이터 파일이 없습니다.</b><br>
+  이 HTML과 같은 폴더에서 <code>python fin_update.py</code>(실데이터) 또는 <code>python fin_update.py --demo</code>(화면 확인용)를 실행하면 <code>data/fin_data.js</code>가 생성됩니다.</div>`;
+  return;
+}
+if(typeof Chart === 'undefined'){
+  $('#banners').innerHTML = '<div class="banner err">차트 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.</div>';
+  return;
+}
+const S = D.series || {};
+$('#meta').textContent = `업데이트 ${D.meta.updated} · 출처: ${D.meta.sources.join(', ')}`;
+let bn = '';
+if(D.meta.demo) bn += '<div class="banner demo"><b>가상(데모) 데이터입니다.</b> 화면 확인용으로 만든 수치이며 실제 시장·은행 값이 아닙니다. API 키를 넣고 <code>python fin_update.py</code>를 실행하면 실데이터로 바뀝니다.</div>';
+if(D.meta.errors && D.meta.errors.length) bn += `<div class="banner err"><b>일부 항목 수집 실패</b> (이전 값 유지): ${D.meta.errors.map(esc).join(' / ')}</div>`;
+$('#banners').innerHTML = bn;
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+const pts = k => (S[k] && S[k].points) || [];
+const last = k => {const p=pts(k); return p.length? p[p.length-1] : null};
+function valueAt(k, d){ // d 이전(포함) 마지막 값
+  const p = pts(k); let lo=0, hi=p.length-1, ans=null;
+  while(lo<=hi){const m=(lo+hi)>>1; if(p[m][0]<=d){ans=p[m];lo=m+1}else hi=m-1}
+  return ans ? ans[1] : null;
+}
+function shiftDate(d, days){const t=new Date(d+'T00:00:00'); t.setDate(t.getDate()-days); return t.toISOString().slice(0,10)}
+function shiftMonth(m, n){let [y,mm]=m.split('-').map(Number); mm-=n; while(mm<=0){mm+=12;y--} return y+'-'+String(mm).padStart(2,'0')}
+const isRate = k => S[k] && S[k].unit === '%';
+const fmt = (v, d=2) => v==null||isNaN(v) ? '–' : Number(v).toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d});
+function chgText(k, a, b){
+  if(a==null||b==null) return {t:'–',c:'flat',v:null};
+  const v = isRate(k) ? (a-b) : (a/b-1)*100;
+  const t = isRate(k) ? `${v>=0?'+':''}${fmt(v,2)}%p` : `${v>=0?'+':''}${fmt(v,2)}%`;
+  return {t, c: Math.abs(v)<1e-9?'flat':(v>0?'up':'down'), v};
+}
+function cpiYoY(){
+  const p = pts('cpi'), m = new Map(p);
+  return p.map(([d,v])=>{const pv=m.get(shiftMonth(d,12)); return pv? [d, (v/pv-1)*100] : null}).filter(Boolean);
+}
+
+/* ---------- 상태 ---------- */
+let periodDays = 183;
+let fxMode = 'idx';
+const charts = {};
+function mk(id, cfg){ if(charts[id]) charts[id].destroy(); charts[id] = new Chart(document.getElementById(id), cfg); return charts[id]; }
+function baseOpts(extra={}){
+  const ink = css('--sub'), grid = css('--line');
+  return Object.assign({
+    responsive:true, maintainAspectRatio:false, animation:false,
+    interaction:{mode:'index', intersect:false},
+    plugins:{legend:{labels:{color:ink, boxWidth:12, font:{size:12}}},
+      tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y, c.dataset._dec ?? 2)}`}}},
+    scales:{x:{ticks:{color:ink, maxTicksLimit:8, maxRotation:0, font:{size:11}}, grid:{display:false}},
+            y:{ticks:{color:ink, font:{size:11}}, grid:{color:grid}}},
+    elements:{point:{radius:0, hoverRadius:3}, line:{borderWidth:1.8, tension:.15}}
+  }, extra);
+}
+function window_(keys){ // 기간 내 날짜 라벨(합집합) + 각 키 값
+  const endD = keys.map(k=>last(k)).filter(Boolean).map(x=>x[0]).sort().pop();
+  if(!endD) return {labels:[], data:{}};
+  const start = shiftDate(endD, periodDays);
+  const set = new Set();
+  keys.forEach(k=>pts(k).forEach(([d])=>{ if(d>=start) set.add(d) }));
+  const labels = [...set].sort();
+  const data = {};
+  keys.forEach(k=>{ const m = new Map(pts(k)); data[k] = labels.map(d=>m.has(d)?m.get(d):null) });
+  return {labels, data};
+}
+const colors = () => ['--c1','--c2','--c3','--c4','--c5','--c6','--c7'].map(css);
+function ds(label, data, color, extra={}){ return Object.assign({label, data, borderColor:color, backgroundColor:color, spanGaps:true}, extra) }
+
+/* ---------- KPI ---------- */
+function renderKpis(){
+  const cpiY = cpiYoY();
+  const items = [
+    ['base_rate','기준금리'],['ktb3','국고채 3년'],['ktb10','국고채 10년'],['cd91','CD 91일'],
+    ['usdkrw','원/달러'],['kospi','KOSPI'],['cpiyoy','물가상승률(전년비)'],['nim','은행 예대금리차']];
+  const html = [];
+  const sparks = [];
+  items.forEach(([k,lbl],i)=>{
+    let p, unit, isR=true, cmp;
+    if(k==='cpiyoy'){ p=cpiY; unit='%'; }
+    else if(k==='nim'){ const lm=new Map(pts('loan_rate')); p=pts('dep_rate').filter(([d])=>lm.has(d)).map(([d,v])=>[d, lm.get(d)-v]); unit='%p'; }
+    else { p=pts(k); unit=S[k]?S[k].unit:''; isR=isRate(k); }
+    if(!p || !p.length){ html.push(`<div class="card kpi"><div class="lbl">${lbl}</div><div class="val flat">–</div><div class="chg flat">데이터 없음</div></div>`); return; }
+    const cur = p[p.length-1];
+    const monthly = cur[0].length===7;
+    const prev = monthly ? p[p.length-2] : p.filter(x=>x[0]<=shiftDate(cur[0],30)).pop();
+    let c = {t:'–',c:'flat'};
+    if(prev){ const v = isR ? cur[1]-prev[1] : (cur[1]/prev[1]-1)*100; c={t:`${v>=0?'+':''}${fmt(v,2)}${isR?'%p':'%'}`, c:Math.abs(v)<1e-9?'flat':(v>0?'up':'down')}; }
+    const dec = (unit==='원'||unit==='pt') ? (k==='usdkrw'?1:2) : 2;
+    html.push(`<div class="card kpi"><div class="lbl">${lbl}</div><div class="val">${fmt(cur[1],dec)}<span style="font-size:13px;font-weight:500;color:var(--sub)"> ${unit==='pt'?'':unit}</span></div>
+      <div class="chg ${c.c}">${c.t} <span class="flat" style="font-weight:400">${monthly?'전월비':'1개월'} · ${cur[0]}</span></div><canvas id="sp${i}"></canvas></div>`);
+    sparks.push([`sp${i}`, p.slice(monthly?-24:-120)]);
+  });
+  $('#kpis').innerHTML = html.join('');
+  sparks.forEach(([id, p])=>{
+    const up = p[p.length-1][1] >= p[0][1];
+    new Chart(document.getElementById(id), {type:'line', data:{labels:p.map(x=>x[0]), datasets:[{data:p.map(x=>x[1]), borderColor:css(up?'--up':'--down'), borderWidth:1.5, pointRadius:0, tension:.2, fill:false}]},
+      options:{responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{enabled:false}}, scales:{x:{display:false}, y:{display:false}}}});
+  });
+}
+
+/* ---------- 차트들 ---------- */
+function renderRates(){
+  const keys = ['base_rate','call','cd91','ktb3','ktb10','corp3'].filter(k=>pts(k).length);
+  const w = window_(keys), C = colors();
+  mk('cRates', {type:'line', data:{labels:w.labels, datasets:keys.map((k,i)=>ds(S[k].name, w.data[k], C[i], k==='base_rate'?{stepped:true, borderWidth:2.6}:{}))},
+    options:baseOpts({scales:{x:{ticks:{color:css('--sub'),maxTicksLimit:8,maxRotation:0}, grid:{display:false}}, y:{ticks:{color:css('--sub'), callback:v=>v.toFixed(2)+'%'}, grid:{color:css('--line')}}}})});
+}
+function renderSpread(){
+  const w = window_(['ktb10','ktb3','corp3']), C = colors();
+  const term = w.labels.map((_,i)=> w.data.ktb10[i]!=null && w.data.ktb3[i]!=null ? +(w.data.ktb10[i]-w.data.ktb3[i]).toFixed(3) : null);
+  const cred = w.labels.map((_,i)=> w.data.corp3[i]!=null && w.data.ktb3[i]!=null ? +(w.data.corp3[i]-w.data.ktb3[i]).toFixed(3) : null);
+  mk('cSpread', {type:'bar', data:{labels:w.labels, datasets:[
+    ds('장단기 금리차(%p)', term, C[0], {type:'bar', backgroundColor:term.map(v=>v!=null&&v<0?css('--up'):C[0]+'99'), borderWidth:0, barPercentage:1, categoryPercentage:1}),
+    ds('신용스프레드(%p)', cred, C[1], {type:'line'})]}, options:baseOpts()});
+}
+function renderFx(){
+  const keys = ['usdkrw','jpykrw','eurkrw'].filter(k=>pts(k).length);
+  const w = window_(keys), C = colors();
+  const data = k => { if(fxMode==='raw') return w.data[k]; const f = w.data[k].find(v=>v!=null); return w.data[k].map(v=>v==null?null:+(v/f*100).toFixed(2)); };
+  $('#fxNote').textContent = fxMode==='idx' ? '기간 시작=100 지수화' : '원 단위';
+  mk('cFx', {type:'line', data:{labels:w.labels, datasets:keys.map((k,i)=>ds(S[k].name, data(k), C[i+1]))}, options:baseOpts()});
+}
+function renderStock(){
+  const w = window_(['kospi','kosdaq']), C = colors();
+  const o = baseOpts(); o.scales.y2 = {position:'right', ticks:{color:css('--sub'),font:{size:11}}, grid:{display:false}};
+  mk('cStock', {type:'line', data:{labels:w.labels, datasets:[ds('KOSPI', w.data.kospi, C[0]), ds('KOSDAQ', w.data.kosdaq, C[3], {yAxisID:'y2'})]}, options:o});
+}
+function renderCpi(){
+  const y = cpiYoY().slice(-36), C = colors();
+  const br = y.map(([m])=> valueAt('base_rate', m+'-31'));
+  const real = y.map(([m,v],i)=> br[i]!=null ? +(br[i]-v).toFixed(2) : null);
+  mk('cCpi', {type:'bar', data:{labels:y.map(x=>x[0]), datasets:[
+    ds('물가상승률(%)', y.map(x=>+x[1].toFixed(2)), C[1]+'bb', {borderWidth:0}),
+    ds('기준금리(%)', br, C[0], {type:'line', stepped:true}),
+    ds('실질 기준금리(%p)', real, C[2], {type:'line', borderDash:[4,3]})]}, options:baseOpts()});
+}
+function renderBank(){
+  const dep = pts('dep_rate').slice(-36), lm = new Map(pts('loan_rate')), C = colors();
+  const loan = dep.map(([d])=>lm.get(d) ?? null);
+  const gap = dep.map(([d,v],i)=> loan[i]!=null ? +(loan[i]-v).toFixed(2) : null);
+  const o = baseOpts(); o.scales.y2 = {position:'right', ticks:{color:css('--sub'),font:{size:11}}, grid:{display:false}, beginAtZero:true};
+  mk('cBank', {type:'line', data:{labels:dep.map(x=>x[0]), datasets:[
+    ds('대출금리', loan, C[4]), ds('저축성수신금리', dep.map(x=>x[1]), C[0]),
+    ds('예대금리차(우, %p)', gap, C[2]+'66', {type:'bar', yAxisID:'y2', borderWidth:0})]}, options:o});
+}
+
+/* ---------- 금리 전달 경로 다이어그램 ---------- */
+function renderFlow(){
+  const node = (k, label) => {
+    const l = last(k); if(!l) return {label, v:'–', c:'–', cls:'flat'};
+    const monthly = l[0].length===7;
+    const pv = monthly ? (pts(k).slice(-2)[0]||[])[1] : valueAt(k, shiftDate(l[0],30));
+    const c = chgText(k, l[1], pv);
+    return {label, v: fmt(l[1],2)+'%', c:c.t, cls:c.c};
+  };
+  const N = {
+    a: node('base_rate','한국은행 기준금리'),
+    b: node('call','콜금리(1일)'), c: node('cd91','CD 91일'),
+    d: node('ktb3','국고채 3년'), e: node('ktb10','국고채 10년'),
+    f: node('dep_rate','은행 수신금리'), g: node('loan_rate','은행 대출금리'), h: node('corp3','회사채 3년')
+  };
+  const col = {up:css('--up'), down:css('--down'), flat:css('--sub')};
+  const box = (x,y,n,w=170) => `<g><rect x="${x}" y="${y}" width="${w}" height="58" rx="10" fill="var(--chip)" stroke="var(--line)"/>
+    <text x="${x+12}" y="${y+20}" font-size="12" fill="var(--sub)">${n.label}</text>
+    <text x="${x+12}" y="${y+44}" font-size="18" font-weight="700" fill="var(--ink)">${n.v}</text>
+    <text x="${x+w-10}" y="${y+44}" font-size="12" font-weight="600" text-anchor="end" fill="${col[n.cls]}">${n.c}</text></g>`;
+  const arr = (x1,y1,x2,y2) => `<path d="M${x1} ${y1} C ${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}" fill="none" stroke="var(--sub)" stroke-width="1.4" marker-end="url(#ah)"/>`;
+  $('#flow').innerHTML = `<svg viewBox="0 0 600 300" role="img" aria-label="금리 전달 경로">
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--sub)"/></marker></defs>
+    <text x="10" y="16" font-size="11" fill="var(--sub)">정책금리</text><text x="215" y="16" font-size="11" fill="var(--sub)">시장금리</text><text x="420" y="16" font-size="11" fill="var(--sub)">은행·기업 금리</text>
+    ${arr(180,151,215,58)}${arr(180,151,215,128)}${arr(180,151,215,198)}${arr(180,151,215,268)}
+    ${arr(385,58,420,58)}${arr(385,128,420,128)}${arr(385,198,420,128)}${arr(385,268,420,232)}${arr(385,198,420,232)}
+    ${box(10,122,N.a)}
+    ${box(215,29,N.b)}${box(215,99,N.c)}${box(215,169,N.d)}${box(215,239,N.e)}
+    ${box(420,29,N.f)}${box(420,99,N.g)}${box(420,203,N.h)}
+  </svg><div class="meta">화살표는 일반적인 금리 파급 방향입니다. 은행 수신·대출금리는 월간 통계라 전월 대비 변화입니다.</div>`;
+}
+
+/* ---------- 변화표 / 상관 ---------- */
+const TABLE_KEYS = ['base_rate','call','cd91','ktb3','ktb10','corp3','usdkrw','jpykrw','eurkrw','kospi','kosdaq'];
+function renderChgTable(){
+  const cols = [['1주',7],['1개월',30],['3개월',91],['1년',365]];
+  let h = '<tr><th>지표</th><th>최근</th>'+cols.map(c=>`<th>${c[0]}</th>`).join('')+'<th>연초 대비</th></tr>';
+  TABLE_KEYS.filter(k=>pts(k).length).forEach(k=>{
+    const l = last(k), ytd = valueAt(k, (l[0].slice(0,4)-1)+'-12-31');
+    const cells = cols.map(([,d])=>chgText(k, l[1], valueAt(k, shiftDate(l[0], d)))).concat([chgText(k, l[1], ytd)]);
+    h += `<tr><td>${S[k].name}</td><td>${fmt(l[1], isRate(k)?2:2)}</td>${cells.map(c=>`<td class="${c.c}">${c.t}</td>`).join('')}</tr>`;
+  });
+  $('#chgTable').innerHTML = h;
+}
+function renderCorr(){
+  const keys = ['base_rate','ktb3','ktb10','corp3','usdkrw','kospi','kosdaq'].filter(k=>pts(k).length);
+  const w = window_(keys);
+  const diffs = {};
+  keys.forEach(k=>{ const a=w.data[k]; diffs[k]=a.map((v,i)=> i&&v!=null&&a[i-1]!=null ? (isRate(k)? v-a[i-1] : Math.log(v/a[i-1])) : null) });
+  const corr = (x,y)=>{ const p=[]; x.forEach((v,i)=>{ if(v!=null&&y[i]!=null) p.push([v,y[i]]) });
+    if(p.length<10) return null; const mx=p.reduce((s,a)=>s+a[0],0)/p.length, my=p.reduce((s,a)=>s+a[1],0)/p.length;
+    let sxy=0,sxx=0,syy=0; p.forEach(([a,b])=>{sxy+=(a-mx)*(b-my);sxx+=(a-mx)**2;syy+=(b-my)**2});
+    return sxx&&syy ? sxy/Math.sqrt(sxx*syy) : null; };
+  const short = {base_rate:'기준',ktb3:'국고3',ktb10:'국고10',corp3:'회사채',usdkrw:'원/달러',kospi:'KOSPI',kosdaq:'KOSDAQ'};
+  let h = '<tr><th></th>'+keys.map(k=>`<th>${short[k]}</th>`).join('')+'</tr>';
+  keys.forEach(a=>{
+    h += `<tr><td>${short[a]}</td>`+keys.map(b=>{
+      const r = a===b ? 1 : corr(diffs[a], diffs[b]);
+      if(r==null) return '<td class="flat">–</td>';
+      const c = r>0 ? css('--up') : css('--down');
+      const alpha = Math.round(Math.min(1,Math.abs(r))*0.55*255).toString(16).padStart(2,'0');
+      return `<td style="background:${c}${alpha};text-align:center">${r.toFixed(2)}</td>`;
+    }).join('')+'</tr>';
+  });
+  $('#corrTable').innerHTML = h + `<tr><td colspan="${keys.length+1}" class="meta" style="text-align:left;white-space:normal">빨강=같은 방향, 파랑=반대 방향으로 움직이는 경향. 기준금리는 변동이 드물어 상관이 낮게 나올 수 있습니다.</td></tr>`;
+}
+
+/* ---------- 자동 요약 ---------- */
+function renderSummary(){
+  const out = [];
+  const ch = (k, d) => { const l=last(k); if(!l) return null; const pv=valueAt(k, shiftDate(l[0], d)); return pv==null?null:{cur:l[1], d:isRate(k)? l[1]-pv : (l[1]/pv-1)*100, date:l[0]} };
+  const br = pts('base_rate');
+  if(br.length){
+    let i = br.length-1; while(i>0 && br[i-1][1]===br[br.length-1][1]) i--;
+    const chg = i>0 ? br[br.length-1][1]-br[i-1][1] : 0;
+    out.push(`기준금리는 <b>${fmt(br[br.length-1][1])}%</b>${i>0?` — ${br[i][0]}에 ${chg>0?'인상':'인하'}(${chg>0?'+':''}${fmt(chg)}%p)된 뒤 유지 중`:''}입니다.`);
+  }
+  const k3 = ch('ktb3',30), k10 = ch('ktb10',30);
+  if(k3) out.push(`국고채 3년물은 1개월간 ${k3.d>=0?'+':''}${fmt(k3.d)}%p ${Math.abs(k3.d)<0.05?'보합':(k3.d>0?'상승':'하락')}했습니다.`);
+  if(k3 && k10){ const sp = k10.cur-k3.cur; out.push(`장단기 금리차(10Y−3Y)는 <b>${fmt(sp)}%p</b>로 ${sp<0?'<span class="up">역전</span> 상태 — 경기 둔화 기대가 반영된 신호로 자주 해석됩니다.':(sp<0.2?'평탄한 편입니다.':'정상(우상향) 구조입니다.')}`); }
+  const c3 = last('corp3'); if(c3 && k3){ out.push(`신용스프레드(회사채 AA−−국고3Y)는 ${fmt(c3[1]-k3.cur)}%p입니다.`); }
+  const fx = ch('usdkrw',30); if(fx) out.push(`원/달러 환율은 ${fmt(fx.cur,1)}원, 1개월 ${fx.d>=0?'+':''}${fmt(fx.d)}% (${fx.d>0?'원화 약세':'원화 강세'}).`);
+  const ks = ch('kospi',30); if(ks) out.push(`KOSPI는 ${fmt(ks.cur)}pt, 1개월 ${ks.d>=0?'+':''}${fmt(ks.d)}%.`);
+  const y = cpiYoY(); if(y.length && br.length){ const r = br[br.length-1][1]-y[y.length-1][1]; out.push(`물가상승률(${y[y.length-1][0]})은 ${fmt(y[y.length-1][1])}%로 실질 기준금리는 ${r>=0?'+':''}${fmt(r)}%p입니다.`); }
+  const dp = last('dep_rate'), ln = last('loan_rate'); if(dp && ln) out.push(`은행 신규 예대금리차(${dp[0]})는 ${fmt(ln[1]-dp[1])}%p (수신 ${fmt(dp[1])}% / 대출 ${fmt(ln[1])}%).`);
+  $('#summary').innerHTML = out.map(s=>`<li>${s}</li>`).join('') || '<li>요약할 데이터가 없습니다.</li>';
+}
+
+/* ---------- 100대 지표 ---------- */
+function renderKeystats(){
+  const q = $('#ksSearch').value.trim();
+  const rows = (D.keystats||[]).filter(r=>!q || (r.cls+r.name).includes(q));
+  $('#ksCount').textContent = `${rows.length}개`;
+  $('#ksTable').innerHTML = '<tr><th>분류</th><th style="text-align:left">지표</th><th>값</th><th>단위</th><th>시점</th></tr>' +
+    rows.map(r=>`<tr><td>${esc(r.cls)}</td><td style="text-align:left;white-space:normal">${esc(r.name)}</td><td>${fmt(r.value, Math.abs(r.value)>=1000?0:2)}</td><td>${esc(r.unit)}</td><td>${esc(r.cycle)}</td></tr>`).join('');
+}
+$('#ksSearch').oninput = renderKeystats;
+
+/* ---------- 이벤트 ---------- */
+document.querySelectorAll('#period button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#period button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  periodDays = +b.dataset.d; renderPeriodCharts();
+});
+document.querySelectorAll('#fxMode button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#fxMode button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  fxMode = b.dataset.m; renderFx();
+});
+function renderPeriodCharts(){ renderRates(); renderSpread(); renderFx(); renderStock(); renderCorr(); }
+function renderAll(){
+  Chart.helpers && Object.values(Chart.instances||{}).forEach(c=>{ if(c.canvas && c.canvas.id.startsWith('sp')) c.destroy(); });
+  renderKpis(); renderPeriodCharts(); renderCpi(); renderBank(); renderFlow(); renderChgTable(); renderSummary(); renderKeystats();
+}
+renderAll();
+$('#foot').innerHTML = '데이터: 한국은행 경제통계시스템(ECOS) Open API. 매일 <code>fin_update.py</code>를 실행하면 자동 갱신됩니다. 투자 판단의 참고 자료일 뿐이며 정확성은 원 출처에서 확인하세요.';
+})();
+</script>
+</body>
+</html>

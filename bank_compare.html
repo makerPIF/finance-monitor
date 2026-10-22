@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>은행 상품 비교</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="data/fin_data.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8;--card:#ffffff;--ink:#16202c;--sub:#5d6b7a;--line:#e3e7ec;--accent:#1f5eff;--accent2:#e8590c;
+  --up:#d6336c;--down:#1971c2;--chip:#eef2f7;--sel:#e7efff;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141a;--card:#171e27;--ink:#e6ebf1;--sub:#93a1b1;--line:#27313d;--accent:#5b8cff;--accent2:#ff922b;--chip:#212a35;--sel:#1d2a44;--up:#ff6b9a;--down:#4dabf7}}
+:root[data-theme="dark"]{--bg:#0f141a;--card:#171e27;--ink:#e6ebf1;--sub:#93a1b1;--line:#27313d;--accent:#5b8cff;--accent2:#ff922b;--chip:#212a35;--sel:#1d2a44;--up:#ff6b9a;--down:#4dabf7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:14px;line-height:1.5}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+h1{font-size:22px;margin:0;letter-spacing:-.3px}
+h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h2 small{font-weight:400;color:var(--sub);font-size:12px}
+.meta{color:var(--sub);font-size:12px}
+.banner{padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:13px}
+.banner.demo{background:#fff4e6;color:#a8410b;border:1px solid #ffd8a8}
+.banner.none{background:var(--card);border:1px solid var(--line)}
+.banner.err{background:#fff5f5;color:#c92a2a;border:1px solid #ffc9c9}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .banner.demo{background:#3a2410;color:#ffc078;border-color:#5c3a17}}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px;overflow-x:auto}
+.tabs button{border:0;background:none;padding:10px 14px;font:inherit;font-size:14px;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--ink);font-weight:700;border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.grid{display:grid;gap:12px}
+.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr))}
+.filters{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end}
+.filters label{display:flex;flex-direction:column;font-size:12px;color:var(--sub);gap:4px}
+select,input{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
+input[type=number]{width:140px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:4px 10px;border-radius:999px;font-size:12px;cursor:pointer;user-select:none}
+.chip.off{opacity:.4;text-decoration:line-through}
+.chip.act{font-weight:600}
+.chartbox{position:relative;height:320px}
+.chartbox.sm{height:260px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+th{color:var(--sub);font-weight:600;font-size:12px;background:var(--card);position:sticky;top:0;cursor:pointer;white-space:nowrap}
+th.nosort{cursor:default}
+td.l,th.l{text-align:left}
+tr.pick td{background:var(--sel)}
+tbody tr:hover td{background:var(--chip)}
+.tscroll{overflow:auto;max-height:560px}
+.rank{display:inline-block;min-width:22px;text-align:center;border-radius:6px;background:var(--chip);font-size:11px;padding:1px 4px}
+.rank.r1{background:var(--accent);color:#fff}
+.small{font-size:12px;color:var(--sub)}
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.cmp .card{padding:12px}
+.cmp h3{font-size:14px;margin:0 0 6px}
+.cmp dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12px}
+.cmp dt{color:var(--sub)}.cmp dd{margin:0}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 10px;cursor:pointer;font:inherit;font-size:12px}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.nav a{font-size:13px;text-decoration:none;padding:5px 10px;border-radius:8px;background:var(--chip);color:var(--ink)}
+.box{width:16px;height:16px;cursor:pointer}
+.foot{color:var(--sub);font-size:12px;margin-top:20px}
+.hide{display:none!important}
+.stat{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px}
+.stat div{font-size:12px;color:var(--sub)}
+.stat b{display:block;font-size:18px;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>주요 은행 금융상품 비교</h1><div class="meta" id="meta"></div></div>
+  <div class="nav"><a href="dashboard.html">← 금융 동향 대시보드</a><button class="btn" id="themeBtn">화면 모드</button></div>
+</header>
+<div id="banners"></div>
+
+<nav class="tabs" id="tabs">
+  <button data-k="deposit" class="on">정기예금</button><button data-k="saving">적금</button>
+  <button data-k="mortgage">주택담보대출</button><button data-k="rent">전세자금대출</button><button data-k="credit">개인신용대출</button>
+</nav>
+
+<section class="card" style="margin-bottom:12px">
+  <div class="filters" id="filters"></div>
+  <div class="chips" id="bankChips"></div>
+</section>
+
+<section class="card" style="margin-bottom:12px">
+  <div class="stat" id="stats"></div>
+  <h2 id="c1Title">은행별 금리</h2>
+  <div class="chartbox"><canvas id="c1"></canvas></div>
+</section>
+
+<section class="grid two" style="margin-bottom:12px">
+  <div class="card">
+    <h2 id="c2Title"></h2>
+    <div class="chartbox sm"><canvas id="c2"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>은행별 대표 금리 추이 <small id="histNote"></small></h2>
+    <div class="chartbox sm"><canvas id="c3"></canvas></div>
+  </div>
+</section>
+
+<section class="card" style="margin-bottom:12px">
+  <h2 id="calcTitle">수령액 계산기</h2>
+  <div class="filters" id="calcInputs"></div>
+  <div class="tscroll" style="margin-top:12px;max-height:380px"><table id="calcTable"></table></div>
+</section>
+
+<section class="card" style="margin-bottom:12px">
+  <h2>상품 목록 <small id="cnt"></small><small>· 체크하면 아래에서 나란히 비교(최대 4개) · 열 제목을 누르면 정렬</small></h2>
+  <div class="tscroll"><table id="tbl"></table></div>
+</section>
+
+<section class="card" id="cmpCard">
+  <h2>선택 상품 비교 <button class="btn" id="clearCmp">비우기</button></h2>
+  <div class="cmp" id="cmp"><div class="small">상품 목록에서 체크하세요.</div></div>
+</section>
+
+<div class="foot">데이터: 금융감독원 금융상품통합비교공시(FINLIFE) API — 은행권(topFinGrpNo 020000). 금리는 공시 기준이며 실제 적용 금리는 우대조건·신용도에 따라 다릅니다. 가입 전 각 은행에서 확인하세요.</div>
+</div>
+
+<script>
+(function(){
+const D = window.FIN_DATA;
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const esc = s => String(s ?? '').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = (v,d=2) => v==null||isNaN(v) ? '–' : Number(v).toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const won = v => v==null ? '–' : Math.round(v).toLocaleString('ko-KR')+'원';
+
+$('#themeBtn').onclick = () => {
+  const r=document.documentElement, cur=r.getAttribute('data-theme');
+  const dark = cur ? cur==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.setAttribute('data-theme', dark?'light':'dark');
+  try{localStorage.setItem('finTheme', r.getAttribute('data-theme'))}catch(e){}
+  render();
+};
+try{const t=localStorage.getItem('finTheme'); if(t) document.documentElement.setAttribute('data-theme',t);}catch(e){}
+
+if(!D || !D.products || !Object.values(D.products).some(a=>a&&a.length)){
+  $('#banners').innerHTML = `<div class="banner none"><b>상품 데이터가 없습니다.</b><br>같은 폴더에서 <code>python fin_update.py</code>(금융감독원 API 키 필요) 또는 <code>python fin_update.py --demo</code>를 실행하세요.</div>`;
+  return;
+}
+if(typeof Chart==='undefined'){ $('#banners').innerHTML='<div class="banner err">차트 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.</div>'; return; }
+$('#meta').textContent = `업데이트 ${D.meta.updated} · 공시월 ${[...new Set(Object.values(D.products).flat().map(p=>p.month))].filter(Boolean).sort().pop()||'–'}`;
+if(D.meta.demo) $('#banners').innerHTML = '<div class="banner demo"><b>가상(데모) 데이터입니다.</b> 은행명·금리 모두 화면 확인용으로 만든 값입니다. 금융감독원 API 키로 <code>python fin_update.py</code>를 실행하면 실제 공시 상품으로 바뀝니다.</div>';
+
+/* ---------- 상태 ---------- */
+let kind = 'deposit';
+const st = {
+  term:12, rateType:'전체', rsrv:'전체', join:'전체', basis:'max', q:'',
+  mrtg:'아파트', rpay:'전체', lrt:'전체', grade:'avg',
+  amount:10000000, monthly:500000, tax:0.154, useMax:true,
+  loanAmt:300000000, loanYears:30, creditAmt:30000000, creditYears:3,
+  sort:null, sortDir:-1, off:new Set(), picks:new Map()
+};
+const P = () => D.products[kind] || [];
+const banks = () => [...new Set(P().map(p=>p.bank))].sort((a,b)=>a.localeCompare(b,'ko'));
+const isDep = () => kind==='deposit' || kind==='saving';
+const isLoan = () => kind==='mortgage' || kind==='rent';
+const GRADES = [['1','1~2등급'],['4','3~4등급'],['5','5~6등급'],['6','7~8등급'],['10','9~10등급'],['avg','평균']];
+
+/* ---------- 필터 UI ---------- */
+function sel(id, label, opts, val){
+  return `<label>${label}<select id="${id}">${opts.map(o=>{const [v,t]=Array.isArray(o)?o:[o,o]; return `<option value="${v}" ${String(v)===String(val)?'selected':''}>${t}</option>`}).join('')}</select></label>`;
+}
+function buildFilters(){
+  let h = '';
+  if(isDep()){
+    const terms = [...new Set(P().flatMap(p=>p.options.map(o=>o.term)))].sort((a,b)=>a-b);
+    if(!terms.includes(+st.term)) st.term = terms.includes(12)?12:terms[0];
+    h += sel('fTerm','가입기간', terms.map(t=>[t, t+'개월']), st.term);
+    h += sel('fRate','이자 계산', ['전체','단리','복리'], st.rateType);
+    if(kind==='saving') h += sel('fRsrv','적립 방식', ['전체','정액적립식','자유적립식'], st.rsrv);
+    h += sel('fBasis','정렬 기준 금리', [['max','최고 우대금리'],['base','기본금리']], st.basis);
+  } else if(isLoan()){
+    if(kind==='mortgage') h += sel('fMrtg','담보 유형', ['전체','아파트','아파트외'], st.mrtg);
+    h += sel('fRpay','상환 방식', ['전체','분할상환방식','일시상환방식'], st.rpay);
+    h += sel('fLrt','금리 유형', ['전체','고정금리','변동금리'], st.lrt);
+  } else {
+    h += sel('fGrade','기준 신용등급', GRADES, st.grade);
+  }
+  h += sel('fJoin','가입 방법', ['전체','스마트폰','인터넷','영업점','전화(텔레뱅킹)'], st.join);
+  h += `<label>검색<input type="search" id="fQ" placeholder="은행·상품·우대조건" value="${esc(st.q)}"></label>`;
+  $('#filters').innerHTML = h;
+  const bind = (id, key, num) => { const el=$('#'+id); if(el) el.onchange = el.oninput = () => { st[key] = num? +el.value : el.value; render(); }; };
+  bind('fTerm','term',true); bind('fRate','rateType'); bind('fRsrv','rsrv'); bind('fBasis','basis');
+  bind('fMrtg','mrtg'); bind('fRpay','rpay'); bind('fLrt','lrt'); bind('fGrade','grade'); bind('fJoin','join'); bind('fQ','q');
+
+  $('#bankChips').innerHTML = `<span class="chip act" id="allOn">전체 선택</span><span class="chip act" id="allOff">전체 해제</span>` +
+    banks().map(b=>`<span class="chip ${st.off.has(b)?'off':''}" data-b="${esc(b)}">${esc(b)}</span>`).join('');
+  $('#bankChips').querySelectorAll('[data-b]').forEach(c=>c.onclick=()=>{ const b=c.dataset.b; st.off.has(b)?st.off.delete(b):st.off.add(b); c.classList.toggle('off'); render(false); });
+  $('#allOn').onclick=()=>{ st.off.clear(); buildFilters(); render(false); };
+  $('#allOff').onclick=()=>{ banks().forEach(b=>st.off.add(b)); buildFilters(); render(false); };
+}
+
+/* ---------- 행 만들기 ---------- */
+function passCommon(p){
+  if(st.off.has(p.bank)) return false;
+  if(st.join!=='전체' && !(p.joinWay||'').includes(st.join.replace('(텔레뱅킹)',''))) return false;
+  if(st.q && !(p.bank+p.name+(p.special||'')+(p.type||'')).includes(st.q)) return false;
+  return true;
+}
+function rows(){
+  const out = [];
+  P().forEach(p=>{
+    if(!passCommon(p)) return;
+    if(isDep()){
+      const os = p.options.filter(o=>o.term===+st.term && (st.rateType==='전체'||o.rateType===st.rateType) && (kind!=='saving'||st.rsrv==='전체'||o.rsrv===st.rsrv));
+      if(!os.length) return;
+      const o = os.reduce((a,b)=> ((b[st.basis]??b.base)>(a[st.basis]??a.base)?b:a));
+      out.push({id:p.bank+'|'+p.code+'|'+o.term+o.rateType+o.rsrv, p, o, bank:p.bank, name:p.name, base:o.base, max:o.max??o.base, bonus:(o.max??o.base)-(o.base??0), rateType:o.rateType, rsrv:o.rsrv, key:o[st.basis]??o.base});
+    } else if(isLoan()){
+      const os = p.options.filter(o=>(kind!=='mortgage'||st.mrtg==='전체'||o.mrtg===st.mrtg) && (st.rpay==='전체'||o.rpay===st.rpay) && (st.lrt==='전체'||o.rateType===st.lrt) && o.min!=null);
+      if(!os.length) return;
+      const o = os.reduce((a,b)=> b.min<a.min?b:a);
+      out.push({id:p.bank+'|'+p.code+'|'+o.mrtg+o.rpay+o.rateType, p, o, bank:p.bank, name:p.name, min:o.min, max:o.max, avg:o.avg, rateType:o.rateType, rpay:o.rpay, mrtg:o.mrtg, key:o.min});
+    } else {
+      const o = p.options.find(o=>(o.rateType||'').startsWith('대출금리'));
+      if(!o) return;
+      const v = o.grades[st.grade] ?? o.grades.avg;
+      if(v==null) return;
+      out.push({id:p.bank+'|'+p.code+'|'+(p.type||''), p, o, bank:p.bank, name:p.name, type:p.type, g:o.grades, key:v});
+    }
+  });
+  const asc = !isDep();
+  out.sort((a,b)=> asc ? a.key-b.key : b.key-a.key);
+  out.forEach((r,i)=>r.rank=i+1);
+  if(st.sort){ const k=st.sort; out.sort((a,b)=>{ const x=val(a,k), y=val(b,k); return (typeof x==='string'? x.localeCompare(y,'ko') : (x??-1e9)-(y??-1e9))*st.sortDir; }); }
+  return out;
+}
+function val(r,k){ if(k.startsWith('g_')) return r.g[k.slice(2)]; return r[k]; }
+
+/* ---------- 차트 ---------- */
+const charts = {};
+function mk(id,cfg){ if(charts[id]) charts[id].destroy(); charts[id]=new Chart(document.getElementById(id),cfg); }
+function opts(extra={}){
+  const s=css('--sub'), g=css('--line');
+  return Object.assign({responsive:true, maintainAspectRatio:false, animation:false,
+    plugins:{legend:{labels:{color:s, boxWidth:12}}},
+    scales:{x:{ticks:{color:s, font:{size:11}}, grid:{display:false}}, y:{ticks:{color:s, font:{size:11}}, grid:{color:g}}}}, extra);
+}
+const PAL = () => [css('--accent'), css('--accent2'), '#2b8a3e', '#ae3ec9', '#d6336c', '#0c8599', '#5c7cfa', '#f08c00', '#868e96', '#20c997', '#845ef7', '#e64980'];
+
+function bestByBank(R){
+  const m = new Map();
+  R.forEach(r=>{ const c=m.get(r.bank); if(!c || (isDep()? r.key>c.key : r.key<c.key)) m.set(r.bank, r); });
+  return [...m.values()].sort((a,b)=> isDep()? b.key-a.key : a.key-b.key);
+}
+function renderCharts(R){
+  const B = bestByBank(R), A=css('--accent'), A2=css('--accent2');
+  const labels = B.map(r=>r.bank);
+  if(isDep()){
+    $('#c1Title').innerHTML = `은행별 최고 금리 <small>${st.term}개월 · 은행마다 가장 높은 상품 · 기본금리 + 우대금리</small>`;
+    mk('c1',{type:'bar', data:{labels, datasets:[
+      {label:'기본금리', data:B.map(r=>r.base), backgroundColor:A, stack:'s'},
+      {label:'우대 가산', data:B.map(r=>+(r.bonus).toFixed(2)), backgroundColor:A2+'cc', stack:'s'}]},
+      options:opts({plugins:{legend:{labels:{color:css('--sub')}}, tooltip:{callbacks:{footer:it=>`최고 ${fmt(B[it[0].dataIndex].max)}% · ${B[it[0].dataIndex].name}`}}},
+        scales:{x:{stacked:true, ticks:{color:css('--sub')}, grid:{display:false}}, y:{stacked:true, ticks:{color:css('--sub'), callback:v=>v+'%'}, grid:{color:css('--line')}, min:Math.max(0, Math.floor(Math.min(...B.map(r=>r.base))-1))}}})});
+    $('#c2Title').innerHTML = '기본금리 vs 최고 우대금리 <small>점 하나가 상품 하나 · 대각선에서 멀수록 우대조건 의존이 큼</small>';
+    const pal = PAL(), bl = banks();
+    const byB = {}; R.forEach(r=>(byB[r.bank]=byB[r.bank]||[]).push({x:r.base, y:r.max, n:r.name}));
+    const all = R.flatMap(r=>[r.base,r.max]).filter(v=>v!=null), lo=Math.floor(Math.min(...all)*2)/2, hi=Math.ceil(Math.max(...all)*2)/2;
+    mk('c2',{type:'scatter', data:{datasets:[{label:'기본=최고', type:'line', data:[{x:lo,y:lo},{x:hi,y:hi}], borderColor:css('--line'), borderDash:[4,4], pointRadius:0}]
+      .concat(Object.entries(byB).map(([b,d])=>({label:b, data:d, backgroundColor:pal[bl.indexOf(b)%pal.length], pointRadius:5})))},
+      options:opts({plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>c.raw.n?`${c.dataset.label} ${c.raw.n}: 기본 ${fmt(c.raw.x)}% / 최고 ${fmt(c.raw.y)}%`:''}}},
+        scales:{x:{title:{display:true,text:'기본금리(%)',color:css('--sub')}, ticks:{color:css('--sub')}, grid:{color:css('--line')}, min:lo, max:hi},
+                y:{title:{display:true,text:'최고 우대금리(%)',color:css('--sub')}, ticks:{color:css('--sub')}, grid:{color:css('--line')}, min:lo, max:hi}}})});
+  } else if(isLoan()){
+    $('#c1Title').innerHTML = `은행별 금리 범위 <small>막대=최저~최고, 점=전월 취급 평균 · 은행마다 최저금리가 가장 낮은 상품</small>`;
+    mk('c1',{type:'bar', data:{labels, datasets:[
+      {label:'최저~최고', data:B.map(r=>[r.min, r.max]), backgroundColor:A+'66', borderColor:A, borderWidth:1, borderSkipped:false},
+      {label:'평균', type:'line', data:B.map(r=>r.avg), borderColor:'transparent', backgroundColor:A2, pointRadius:5, pointStyle:'rectRot'}]},
+      options:opts({plugins:{legend:{labels:{color:css('--sub')}}, tooltip:{callbacks:{label:c=>c.dataset.label==='평균'?`평균 ${fmt(c.raw)}%`:`${fmt(c.raw[0])}% ~ ${fmt(c.raw[1])}%`, footer:it=>B[it[0].dataIndex].name}}},
+        scales:{x:{ticks:{color:css('--sub')}, grid:{display:false}}, y:{ticks:{color:css('--sub'), callback:v=>v+'%'}, grid:{color:css('--line')}}}})});
+    $('#c2Title').innerHTML = '금리 유형·상환 방식별 평균 최저금리 <small>현재 은행 선택 기준</small>';
+    const groups = {};
+    P().filter(passCommon).forEach(p=>p.options.forEach(o=>{ if(kind==='mortgage'&&st.mrtg!=='전체'&&o.mrtg!==st.mrtg) return; if(o.min==null) return;
+      const k=o.rpay.replace('방식',''); (groups[k]=groups[k]||{}); (groups[k][o.rateType]=groups[k][o.rateType]||[]).push(o.min); }));
+    const gk = Object.keys(groups), types=['고정금리','변동금리'];
+    mk('c2',{type:'bar', data:{labels:gk, datasets:types.map((t,i)=>({label:t, data:gk.map(g=>{const a=groups[g][t]||[]; return a.length? +(a.reduce((s,v)=>s+v,0)/a.length).toFixed(2):null}), backgroundColor:[A,A2][i]}))},
+      options:opts({scales:{x:{ticks:{color:css('--sub')}, grid:{display:false}}, y:{ticks:{color:css('--sub'), callback:v=>v+'%'}, grid:{color:css('--line')}}}})});
+  } else {
+    const gname = GRADES.find(g=>g[0]===st.grade)[1];
+    $('#c1Title').innerHTML = `은행별 신용대출 금리 <small>${gname} 기준 · 낮을수록 유리</small>`;
+    mk('c1',{type:'bar', data:{labels, datasets:[{label:gname+' 금리', data:B.map(r=>r.key), backgroundColor:B.map((_,i)=>i===0?A2:A)}]},
+      options:opts({plugins:{legend:{display:false}, tooltip:{callbacks:{footer:it=>B[it[0].dataIndex].name}}}, scales:{x:{ticks:{color:css('--sub')}, grid:{display:false}}, y:{ticks:{color:css('--sub'), callback:v=>v+'%'}, grid:{color:css('--line')}}}})});
+    $('#c2Title').innerHTML = '신용등급별 금리 곡선 <small>상위 6개 은행 · 등급이 낮을수록 금리 상승</small>';
+    const pal=PAL(), gk=GRADES.filter(g=>g[0]!=='avg');
+    mk('c2',{type:'line', data:{labels:gk.map(g=>g[1]), datasets:B.slice(0,6).map((r,i)=>({label:r.bank, data:gk.map(g=>r.g[g[0]]), borderColor:pal[i], backgroundColor:pal[i], tension:.2, spanGaps:true}))},
+      options:opts({scales:{x:{ticks:{color:css('--sub')}, grid:{display:false}}, y:{ticks:{color:css('--sub'), callback:v=>v+'%'}, grid:{color:css('--line')}}}})});
+  }
+  // 이력
+  const H = (D.history||{})[kind] || {};
+  const hb = Object.keys(H).filter(b=>!st.off.has(b));
+  const desc = {deposit:'12개월 최고 우대금리', saving:'12개월 최고 우대금리', mortgage:'최저금리', rent:'최저금리', credit:'평균 대출금리'}[kind];
+  const days = [...new Set(hb.flatMap(b=>H[b].map(x=>x[0])))].sort();
+  $('#histNote').textContent = days.length>1 ? `${desc} · ${days[0]} ~ ${days[days.length-1]} (${days.length}회 수집)` : `${desc} · 매일 수집하면 추이가 쌓입니다`;
+  const pal=PAL(), allB=banks();
+  const top = bestByBank(R).slice(0,8).map(r=>r.bank).filter(b=>H[b]);
+  mk('c3',{type:'line', data:{labels:days, datasets:top.map(b=>{const m=new Map(H[b]); const c=pal[allB.indexOf(b)%pal.length]; return {label:b, data:days.map(d=>m.get(d)??null), borderColor:c, backgroundColor:c, pointRadius:days.length<15?3:0, borderWidth:1.6, spanGaps:true, tension:.15}})},
+    options:opts({interaction:{mode:'index',intersect:false}, scales:{x:{ticks:{color:css('--sub'), maxTicksLimit:7, maxRotation:0}, grid:{display:false}}, y:{ticks:{color:css('--sub'), callback:v=>v.toFixed(2)+'%'}, grid:{color:css('--line')}}}})});
+}
+
+/* ---------- 계산기 ---------- */
+function interest(r, kind_, o){
+  const rate = ((st.useMax ? (o.max??o.base) : o.base) || 0)/100, n=o.term;
+  if(kind_==='deposit'){
+    const P_=st.amount, gross = o.rateType==='복리' ? P_*(Math.pow(1+rate/12,n)-1) : P_*rate*n/12;
+    return {principal:P_, gross};
+  } else {
+    const M=st.monthly; let gross=0;
+    if(o.rateType==='복리'){ for(let k=1;k<=n;k++) gross += M*(Math.pow(1+rate/12,k)-1); }
+    else gross = M*rate/12*n*(n+1)/2;
+    return {principal:M*n, gross};
+  }
+}
+const pmt = (L, yr, rate) => { const i=rate/100/12, n=yr*12; return i? L*i/(1-Math.pow(1+i,-n)) : L/n; };
+function buildCalc(){
+  let h='';
+  if(isDep()){
+    $('#calcTitle').innerHTML = `만기 수령액 계산기 <small>${st.term}개월 · 현재 필터 결과 상위 순</small>`;
+    h += kind==='deposit' ? `<label>예치 금액(원)<input type="number" id="cAmt" step="1000000" value="${st.amount}"></label>` : `<label>월 납입액(원)<input type="number" id="cMon" step="100000" value="${st.monthly}"></label>`;
+    h += sel('cTax','과세', [[0.154,'일반과세 15.4%'],[0.095,'세금우대 9.5%'],[0,'비과세']], st.tax);
+    h += sel('cMax','적용 금리', [['1','최고 우대금리'],['0','기본금리']], st.useMax?'1':'0');
+  } else if(isLoan()){
+    $('#calcTitle').innerHTML = '월 상환액 계산기 <small>원리금균등 · 각 상품 최저금리 적용 가정</small>';
+    h += `<label>대출 금액(원)<input type="number" id="lAmt" step="10000000" value="${st.loanAmt}"></label><label>기간(년)<input type="number" id="lYr" min="1" max="50" value="${st.loanYears}"></label>`;
+  } else {
+    $('#calcTitle').innerHTML = '월 상환액 계산기 <small>원리금균등 · 선택 등급 금리 적용 가정</small>';
+    h += `<label>대출 금액(원)<input type="number" id="lAmt" step="1000000" value="${st.creditAmt}"></label><label>기간(년)<input type="number" id="lYr" min="1" max="10" value="${st.creditYears}"></label>`;
+  }
+  $('#calcInputs').innerHTML = h;
+  const b = (id,f)=>{const e=$('#'+id); if(e) e.oninput=e.onchange=()=>{f(e.value); renderCalc(currentRows)}};
+  b('cAmt',v=>st.amount=+v); b('cMon',v=>st.monthly=+v); b('cTax',v=>st.tax=+v); b('cMax',v=>st.useMax=v==='1');
+  b('lAmt',v=>{ if(kind==='credit') st.creditAmt=+v; else st.loanAmt=+v; }); b('lYr',v=>{ if(kind==='credit') st.creditYears=+v; else st.loanYears=+v; });
+}
+function renderCalc(R){
+  if(isDep()){
+    const list = R.map(r=>{ const x=interest(r, kind, r.o); const net=x.gross*(1-st.tax); return {r, ...x, net, total:x.principal+net}; }).sort((a,b)=>b.total-a.total).slice(0,15);
+    const best = list[0]?.net||0;
+    $('#calcTable').innerHTML = `<thead><tr><th class="nosort">순위</th><th class="l nosort">은행</th><th class="l nosort">상품</th><th class="nosort">적용금리</th><th class="nosort">원금</th><th class="nosort">세전이자</th><th class="nosort">세후이자</th><th class="nosort">만기 수령액</th><th class="nosort">1위와 차이</th></tr></thead><tbody>` +
+      list.map((x,i)=>`<tr><td><span class="rank ${i===0?'r1':''}">${i+1}</span></td><td class="l">${esc(x.r.bank)}</td><td class="l">${esc(x.r.name)} <span class="small">${x.r.rateType}${x.r.rsrv?' · '+x.r.rsrv:''}</span></td>
+        <td>${fmt(st.useMax?x.r.max:x.r.base)}%</td><td>${won(x.principal)}</td><td>${won(x.gross)}</td><td><b>${won(x.net)}</b></td><td><b>${won(x.total)}</b></td><td class="small">${i?'−'+won(best-x.net):''}</td></tr>`).join('') + '</tbody>';
+  } else {
+    const amt = kind==='credit'?st.creditAmt:st.loanAmt, yr = kind==='credit'?st.creditYears:st.loanYears;
+    const list = R.map(r=>{ const m=pmt(amt, yr, r.key); return {r, m, tot:m*yr*12-amt}; }).sort((a,b)=>a.m-b.m).slice(0,15);
+    const best = list[0]?.tot||0;
+    $('#calcTable').innerHTML = `<thead><tr><th class="nosort">순위</th><th class="l nosort">은행</th><th class="l nosort">상품</th><th class="nosort">적용금리</th><th class="nosort">월 상환액</th><th class="nosort">총 이자</th><th class="nosort">최저 대비 추가 이자</th></tr></thead><tbody>` +
+      list.map((x,i)=>`<tr><td><span class="rank ${i===0?'r1':''}">${i+1}</span></td><td class="l">${esc(x.r.bank)}</td><td class="l">${esc(x.r.name)} <span class="small">${esc([x.r.mrtg,x.r.rpay,x.r.rateType,x.r.type].filter(Boolean).join(' · '))}</span></td>
+        <td>${fmt(x.r.key)}%</td><td><b>${won(x.m)}</b></td><td>${won(x.tot)}</td><td class="small">${i?'+'+won(x.tot-best):''}</td></tr>`).join('') + '</tbody>';
+  }
+}
+
+/* ---------- 표 ---------- */
+let currentRows = [];
+function cols(){
+  if(isDep()) return [['rank','순위'],['bank','은행','l'],['name','상품','l'],['rateType','이자'],...(kind==='saving'?[['rsrv','적립']]:[]),['base','기본금리'],['max','최고금리'],['bonus','우대폭'],['joinWay','가입방법','l'],['special','우대조건','l']];
+  if(isLoan()) return [['rank','순위'],['bank','은행','l'],['name','상품','l'],...(kind==='mortgage'?[['mrtg','담보']]:[]),['rpay','상환'],['rateType','금리유형'],['min','최저'],['max','최고'],['avg','전월평균'],['earlyFee','중도상환수수료','l']];
+  return [['rank','순위'],['bank','은행','l'],['name','상품','l'],['type','구분'],...GRADES.map(g=>['g_'+g[0], g[1]])];
+}
+function cell(r,k){
+  if(k==='rank') return `<span class="rank ${r.rank===1?'r1':''}">${r.rank}</span>`;
+  if(k==='joinWay') return `<span class="small">${esc(r.p.joinWay)}</span>`;
+  if(k==='special') return `<span class="small" style="display:inline-block;max-width:280px;white-space:normal">${esc(r.p.special).replace(/\n/g,'<br>')}</span>`;
+  if(k==='earlyFee') return `<span class="small" style="display:inline-block;max-width:240px;white-space:normal">${esc(r.p.earlyFee)}</span>`;
+  if(k.startsWith('g_')){ const v=r.g[k.slice(2)]; return `<span style="${k==='g_'+st.grade?'font-weight:700;color:var(--accent)':''}">${fmt(v)}</span>`; }
+  if(['base','max','min','avg'].includes(k)) return fmt(r[k]);
+  if(k==='bonus') return r.bonus>0? `<span style="color:var(--accent2)">+${fmt(r.bonus)}</span>` : '<span class="small">0</span>';
+  return esc(r[k]);
+}
+function renderTable(R){
+  const C = cols();
+  $('#cnt').textContent = `${R.length}개`;
+  $('#tbl').innerHTML = `<thead><tr><th class="nosort"></th>${C.map(([k,t,a])=>`<th data-k="${k}" class="${a||''}">${t}${st.sort===k?(st.sortDir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>` +
+    R.map(r=>`<tr class="${st.picks.has(r.id)?'pick':''}"><td><input type="checkbox" class="box" data-id="${esc(r.id)}" ${st.picks.has(r.id)?'checked':''}></td>${C.map(([k,,a])=>`<td class="${a||''}">${cell(r,k)}</td>`).join('')}</tr>`).join('') + '</tbody>';
+  $('#tbl').querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; if(k==='rank'){st.sort=null} else if(st.sort===k) st.sortDir*=-1; else {st.sort=k; st.sortDir=isDep()&&!['bank','name'].includes(k)?-1:1;} render(false); });
+  $('#tbl').querySelectorAll('.box').forEach(cb=>cb.onchange=()=>{
+    const r = R.find(x=>x.id===cb.dataset.id);
+    if(cb.checked){ if(st.picks.size>=4){ cb.checked=false; alert('최대 4개까지 비교할 수 있습니다.'); return; } st.picks.set(r.id, {kind, r}); }
+    else st.picks.delete(r.id);
+    cb.closest('tr').classList.toggle('pick', cb.checked); renderCmp();
+  });
+}
+function renderCmp(){
+  const items = [...st.picks.values()];
+  if(!items.length){ $('#cmp').innerHTML = '<div class="small">상품 목록에서 체크하세요.</div>'; return; }
+  const name = {deposit:'정기예금',saving:'적금',mortgage:'주담대',rent:'전세대출',credit:'신용대출'};
+  $('#cmp').innerHTML = items.map(({kind:k, r})=>{
+    const p=r.p; let dl='';
+    if(k==='deposit'||k==='saving'){
+      const terms = p.options.filter(o=>o.rateType===r.rateType && (!r.rsrv||o.rsrv===r.rsrv)).sort((a,b)=>a.term-b.term).map(o=>`${o.term}개월 ${fmt(o.base)}→${fmt(o.max)}%`).join('<br>');
+      dl = `<dt>기간별</dt><dd>${terms}</dd><dt>가입대상</dt><dd>${esc(p.member)}</dd><dt>한도</dt><dd>${p.limit?won(p.limit):'제한없음/미공시'}</dd><dt>우대조건</dt><dd>${esc(p.special).replace(/\n/g,'<br>')}</dd><dt>만기후</dt><dd>${esc(p.maturity).replace(/\n/g,'<br>')}</dd>`;
+    } else if(k==='mortgage'||k==='rent'){
+      dl = `<dt>조건</dt><dd>${esc([r.mrtg,r.rpay,r.rateType].filter(Boolean).join(' · '))}</dd><dt>금리</dt><dd>${fmt(r.min)} ~ ${fmt(r.max)}% (평균 ${fmt(r.avg)}%)</dd><dt>한도</dt><dd>${esc(p.limitTxt)}</dd><dt>중도상환</dt><dd>${esc(p.earlyFee)}</dd><dt>연체이자</dt><dd>${esc(p.delay)}</dd><dt>부대비용</dt><dd>${esc(p.cost)}</dd>`;
+    } else {
+      dl = GRADES.map(g=>`<dt>${g[1]}</dt><dd>${fmt(r.g[g[0]])}%</dd>`).join('') + `<dt>CB사</dt><dd>${esc(p.cb)}</dd>`;
+    }
+    return `<div class="card"><div class="small">${name[k]} · ${esc(r.bank)}</div><h3>${esc(r.name)}</h3><dl><dt>가입방법</dt><dd>${esc(p.joinWay)}</dd>${dl}</dl></div>`;
+  }).join('');
+}
+$('#clearCmp').onclick=()=>{ st.picks.clear(); render(false); };
+
+/* ---------- 통계 요약 ---------- */
+function renderStats(R){
+  if(!R.length){ $('#stats').innerHTML='<div>조건에 맞는 상품이 없습니다.</div>'; return; }
+  const ks = R.map(r=>r.key), avg = ks.reduce((a,b)=>a+b,0)/ks.length;
+  const best = R.reduce((a,b)=> isDep()? (b.key>a.key?b:a) : (b.key<a.key?b:a));
+  const lbl = isDep()? (st.basis==='max'?'최고 우대금리':'기본금리') : (kind==='credit'?'금리':'최저금리');
+  $('#stats').innerHTML = `<div>상품 수<b>${R.length}</b></div><div>${isDep()?'가장 높은':'가장 낮은'} ${lbl}<b>${fmt(best.key)}%</b>${esc(best.bank)}</div><div>평균 ${lbl}<b>${fmt(avg)}%</b></div><div>최고−최저 차이<b>${fmt(Math.max(...ks)-Math.min(...ks))}%p</b></div>`;
+}
+
+/* ---------- 렌더 ---------- */
+function render(rebuild=true){
+  if(rebuild){ buildFilters(); buildCalc(); }
+  currentRows = rows();
+  renderStats(currentRows); renderCharts(currentRows); renderCalc(currentRows); renderTable(currentRows); renderCmp();
+}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  kind=b.dataset.k; st.sort=null; st.q=''; render();
+});
+render();
+})();
+</script>
+</body>
+</html>
